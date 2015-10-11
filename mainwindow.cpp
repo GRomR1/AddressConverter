@@ -16,7 +16,6 @@ MainWindow::MainWindow(QWidget *parent) :
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
    ui->lineEditOpen->setEnabled(false);
    ui->lineEditOpen->setText(trUtf8("Нажмите открыть файл"));
-   ui->mainToolBar->hide();
 }
 
 MainWindow::~MainWindow()

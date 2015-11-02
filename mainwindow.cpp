@@ -8,14 +8,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     _filenameSave="result.csv";
     ui->plainTextEditTo->hide();
-    ui->plainTextEditFrom->hide();
 
    QAction *ab1 = ui->menuBar->addAction(trUtf8("О программе"));
    connect(ab1, SIGNAL(triggered(bool)),
            this, SLOT(aboutTriggered(bool)));
    ui->radioButtonXls->setToolTip(trUtf8("Медленней"));
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
-   _vector.reserve(89073);
+   ui->lineEditOpen->setEnabled(false);
+   ui->lineEditOpen->setText(trUtf8("Нажмите открыть файл"));
 }
 
 MainWindow::~MainWindow()
@@ -90,166 +90,24 @@ void MainWindow::on_pushButtonOpen_clicked()
     QString str =
             QFileDialog::getOpenFileName(this, trUtf8("Укажите исходный файл"),
                                          "",
-                                         tr("Excel (*.xls *.xlsx)"));
+                                         tr("Text (*.txt)"));
     if(str.isEmpty())
         return;
     ui->lineEditOpen->setText(str);
-
-//    QFile file1(str);
-//    if (!file1.open(QIODevice::ReadOnly))
-//    {
-//        qDebug() << "Ошибка открытия для чтения";
-//        return;
-//    }
-//    QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
-//    QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
-//    QString str3 = decoder->toUnicode(file1.readAll());
-//    delete decoder;
-//    file1.close();
-
-    QAxObject *excel = new QAxObject("Excel.Application",this); // получаем указатель на Excel
-    if(excel==NULL)
+    QFile file1(str);
+    if (!file1.open(QIODevice::ReadOnly))
     {
-        qDebug() << "false";
-//        return false;
-    }
-    QAxObject *workbooks = excel->querySubObject("Workbooks");
-    if(workbooks==NULL)
-    {
-        qDebug() << "false";
-//        return false;
-    }
-    // на директорию, откуда грузить книгу
-    QAxObject *workbook = workbooks->querySubObject(
-                "Open(const QString&)",
-                str);
-
-//    QAxObject *workbook = workbooks->querySubObject("Add()");
-//    if(workbook==NULL)
-//    {
-//        qDebug() << "false";
-////        return false;
-//    }
-    QAxObject *sheets = workbook->querySubObject("Sheets");
-    if(sheets==NULL)
-    {
-        qDebug() << "false";
-//        return false;
+        qDebug() << "Ошибка открытия для чтения";
+        return;
     }
 
-    int count = sheets->dynamicCall("Count()").toInt();
-    QString firstSheetName;
-    for (int i=1; i<=count; i++)
-    {
-        QAxObject *sheet1 = sheets->querySubObject("Item(int)", i);
-        if(sheet1==NULL)
-        {
-            qDebug() << "false";
-//            return false;
-        }
-        firstSheetName = sheet1->dynamicCall("Name()").toString();
-        sheet1->clear();
-        delete sheet1;
-        sheet1 = NULL;
-        break;
-    }
+    QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
+    QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
+    QString str3 = decoder->toUnicode(file1.readAll());
+    delete decoder;
+    file1.close();
 
-    QAxObject *sheet = NULL;
-    if(!firstSheetName.isEmpty())
-        sheet = sheets->querySubObject(
-                    "Item(const QVariant&)", QVariant(firstSheetName));
-    if(sheet==NULL)
-    {
-        qDebug() << "false";
-//        return false;
-    }
-
-    connect(excel,SIGNAL(exception(int, QString, QString, QString)),
-                     this,SLOT(debugError(int,QString,QString,QString)));
-    connect(workbooks, SIGNAL(exception(int,QString,QString,QString)),
-            this, SLOT(debugError(int,QString,QString,QString)));
-    connect(workbook, SIGNAL(exception(int,QString,QString,QString)),
-            this, SLOT(debugError(int,QString,QString,QString)));
-    connect(sheets, SIGNAL(exception(int,QString,QString,QString)),
-            this, SLOT(debugError(int,QString,QString,QString)));
-    connect(sheet, SIGNAL(exception(int,QString,QString,QString)),
-            this, SLOT(debugError(int,QString,QString,QString)));
-
-    QAxObject *usedRange = sheet->querySubObject("UsedRange");
-    QAxObject *usedRows = usedRange->querySubObject("Rows");
-    QAxObject *usedCols = usedRange->querySubObject("Columns");
-    int rows = usedRows->property("Count").toInt();
-    int cols = usedCols->property("Count").toInt();
-    qDebug() << "Количество строк и столбцов в файле: " << rows << cols;
-
-    //заполняем таблицу
-    QTableWidget *tbl = ui->tableWidgetIn;
-    QTableWidgetItem *ptwi = 0;
-    tbl->setColumnCount(cols);
-    //получение шапки
-    QStringList lst;
-    for(int i=1; i<=cols; i++)
-    {
-        // получение указателя на ячейку [row][col] ((!)нумерация с единицы)
-        QAxObject* cell = sheet->querySubObject("Cells(QVariant,QVariant)", 1, i);
-        // получение содержимого
-        QVariant result = cell->property("Value");
-        lst.append(result.toString());
-        // освобождение памяти
-        delete cell;
-    }
-    tbl->setHorizontalHeaderLabels(lst);
-
-    //заполнение таблицы TableWidget
-    for(int row=2; row<=rows; row++)
-    {
-        tbl->insertRow(tbl->rowCount());
-        for(int col=1; col<=cols; col++)
-        {
-            // получение указателя на ячейку [row][col] ((!)нумерация с единицы)
-            QAxObject* cell = sheet->querySubObject("Cells(QVariant,QVariant)", row, col);
-            // получение содержимого
-            QVariant result = cell->property("Value");
-//            qDebug() << row << col << result.toString();
-            ptwi = new QTableWidgetItem(result.toString());
-            tbl->setItem(row-2, col-1, ptwi);
-            // освобождение памяти
-            delete cell;
-        }
-    }
-
-    // освобождение памяти
-    usedRange->clear();
-    delete usedRange;
-    usedRange = NULL;
-
-//    delete usedRows;
-//    usedRows = NULL;
-
-//    delete usedCols;
-//    usedCols = NULL;
-
-    sheet->clear();
-    delete sheet;
-    sheet = NULL;
-
-    sheets->clear();
-    delete sheets;
-    sheets = NULL;
-
-    workbook->clear();
-    delete workbook;
-    workbook = NULL;
-
-    workbooks->dynamicCall("Close()");
-    workbooks->clear();
-    delete workbooks;
-    workbooks = NULL;
-
-    excel->dynamicCall("Quit()");
-    delete excel;
-    excel = NULL;
-
+    ui->plainTextEditFrom->setPlainText(str3);
     ui->pushButtonConvert->setEnabled(true);
 }
 
@@ -272,12 +130,6 @@ void MainWindow::clearResultData()
     ui->tableWidget->clear();
     ui->tableWidget->setRowCount(0);
     ui->tableWidget->setColumnCount(0);
-    ui->tableWidgetBase->clear();
-    ui->tableWidgetBase->setRowCount(0);
-    ui->tableWidgetBase->setColumnCount(0);
-    ui->tableWidgetIn->clear();
-    ui->tableWidgetIn->setRowCount(0);
-    ui->tableWidgetIn->setColumnCount(0);
 }
 
 void MainWindow::debugError(int i, QString s1, QString s2, QString s3)
@@ -508,86 +360,4 @@ void MainWindow::aboutTriggered(bool checked)
     text.append(tr("<p>Программу разработал <a href='http://gromr1.blogspot.ru/p/about-me.html'>Гайнанов Руслан</a>, студент ИТМО.</p>"));
     text.append(tr("<p><br />Связаться с автором: <a href='mailto:ruslan.r.gainanov@gmail.com'>ruslan.r.gainanov@gmail.com</a>.</p>"));
     QMessageBox::about(this, tr("О программе"), text);
-}
-
-void MainWindow::on_pushButtonOpenBase_clicked()
-{
-    ui->lineEditOpenBase->setEnabled(true);
-    QString str =
-            QFileDialog::getOpenFileName(this, trUtf8("Укажите файл базы данных"),
-                                         "",
-                                         tr("Excel (*.csv)"));
-    if(str.isEmpty())
-        return;
-    ui->lineEditOpenBase->setText(str);
-
-    QFile file1(str);
-    if (!file1.open(QIODevice::ReadOnly))
-    {
-        qDebug() << "Ошибка открытия для чтения";
-        return;
-    }
-    QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
-    QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
-    QString *str3 = new QString (decoder->toUnicode(file1.readAll()));
-    delete decoder;
-    file1.close();
-
-    QVector<QStringList> *vect=&_vector;
-    QStringList *rowList = new QStringList (str3->split("\n"));
-    QString header = rowList->at(0);
-    delete str3;
-    int cols=0;
-    for(int i=0; i<rowList->size(); i++)
-    {
-//        qDebug() << rowList.at(i);
-        QStringList row = rowList->at(i).split(";");
-        bool isSpb=false;
-        for(int j=0; j<row.size(); j++)
-        {
-            if(j>cols)
-                cols=j;
-            if(j==1)
-            {
-                if(row.at(j).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
-                {
-//                    qDebug() << row.at(j);
-                    isSpb=true;
-                }
-            }
-            row[j].remove("\"");
-            row[j] = row.at(j).trimmed();
-        }
-        if(isSpb)
-            vect->append(row);
-    }
-    delete rowList;
-    qDebug() << "Всего адресов из СПб в базе: " << vect->size();
-    qDebug() << "Столбцов: " << cols;
-
-    //заполняем таблицу
-    QTableWidget *tbl = ui->tableWidgetBase;
-    QTableWidgetItem *ptwi = 0;
-    tbl->setColumnCount(cols);
-    //получение шапки
-    QStringList lst;
-    for(int i=1; i<=cols; i++)
-    {
-        QStringList head = header.split(";");
-        head[i].remove("\"");
-        head[i] = head.at(i).trimmed();
-        lst.append(head.at(i));
-    }
-    tbl->setHorizontalHeaderLabels(lst);
-
-    //заполнение таблицы TableWidget
-    for(int row=0; row<500; row++)
-    {
-        tbl->insertRow(tbl->rowCount());
-        for(int col=0; col<cols; col++)
-        {
-            ptwi = new QTableWidgetItem(vect->at(row).at(col));
-            tbl->setItem(row, col, ptwi);
-        }
-    }
 }

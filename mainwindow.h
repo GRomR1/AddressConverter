@@ -32,6 +32,8 @@ private slots:
     void aboutTriggered(bool checked);
     void debugError(int,QString,QString,QString);
 
+    void on_pushButtonOpenBase_clicked();
+
 private:
     Ui::MainWindow *ui;
     QVector<QStringList> _vector;

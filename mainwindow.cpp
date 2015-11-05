@@ -448,6 +448,9 @@ bool MainWindow::saveToXls()
 
 void MainWindow::on_pushButtonConvert_clicked()
 {
+    QMessageBox::information(0, "Information", trUtf8("Действие не реализовано"));
+    return;
+
     clearResultData();
 
     QString str = ui->plainTextEditFrom->toPlainText();
@@ -510,6 +513,70 @@ void MainWindow::aboutTriggered(bool checked)
     QMessageBox::about(this, tr("О программе"), text);
 }
 
+
+void MainWindow::workWitkRow(QStringList &row)
+{
+    if(row.size()!=5)
+    {
+        row.clear();
+        return;
+    }
+    if(row.at(1).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
+    {
+        row.clear();
+        return;
+    }
+    for(int i=0; i<row->size(); i++)
+    {
+        //работаем с STR
+        if(i==1)
+        {
+            //удаляем фразу "г. Санкт-Петербург"
+            //..
+            //удаляем ","
+            //..
+            //приводим к нижнему регистру
+            //..
+            //работаем с именами элементов (приведение их к одному формату)
+            //(ул., пр., наб., ш., б., пер. и пр.)
+            //..
+            //работа со скобками
+            //..
+        }
+
+        //работаем с SID и BID
+        if(i==0 || i==2)
+        {
+            //..
+        }
+
+        //работаем с B
+        if(i==3)
+        {
+            //выделение корпуса (литеры) из содержимого ячейки
+            //..
+            //приведение к формату: "%n" - %n - число
+            //..
+            //удаление записи если это не адрес (напр. "а/я" или "нетр..")
+            //..
+        }
+
+        //работаем с K
+        if(i==4)
+        {
+            //удаление названия элемента ("корп.", "лит." и пр.)
+            //..
+            //приведение к формату: "%n|%c" - %n - число %a - буква(-ы)
+            //..
+        }
+
+        //удаляем боковые символы
+        row[i].remove("\"");
+        row[i] = row.at(i).trimmed();
+
+    }
+}
+
 void MainWindow::on_pushButtonOpenBase_clicked()
 {
     ui->lineEditOpenBase->setEnabled(true);
@@ -537,31 +604,16 @@ void MainWindow::on_pushButtonOpenBase_clicked()
     QStringList *rowList = new QStringList (str3->split("\n"));
     QString header = rowList->at(0);
     delete str3;
-    int cols=0;
-    for(int i=0; i<rowList->size(); i++)
+    for(int i=1; i<rowList->size(); i++)
     {
 //        qDebug() << rowList.at(i);
         QStringList row = rowList->at(i).split(";");
-        bool isSpb=false;
-        for(int j=0; j<row.size(); j++)
-        {
-            if(j>cols)
-                cols=j;
-            if(j==1)
-            {
-                if(row.at(j).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
-                {
-//                    qDebug() << row.at(j);
-                    isSpb=true;
-                }
-            }
-            row[j].remove("\"");
-            row[j] = row.at(j).trimmed();
-        }
-        if(isSpb)
+        workWitkRow(row); // **** DO IT Rishat ***
+        if(!row.isEmpty())
             vect->append(row);
     }
     delete rowList;
+    int cols=5;
     qDebug() << "Всего адресов из СПб в базе: " << vect->size();
     qDebug() << "Столбцов: " << cols;
 
@@ -571,7 +623,7 @@ void MainWindow::on_pushButtonOpenBase_clicked()
     tbl->setColumnCount(cols);
     //получение шапки
     QStringList lst;
-    for(int i=1; i<=cols; i++)
+    for(int i=0; i<cols; i++)
     {
         QStringList head = header.split(";");
         head[i].remove("\"");

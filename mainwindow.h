@@ -34,6 +34,13 @@ private slots:
 
     void on_pushButtonOpenBase_clicked();
 
+    /**
+     * @brief
+     * Работа со строкой базы данных
+     * @param row Список записей строки БД
+     */
+    void workWitkRow(QStringList &row);
+
 private:
     Ui::MainWindow *ui;
     QVector<QStringList> _vector;

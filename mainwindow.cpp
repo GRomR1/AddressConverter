@@ -521,12 +521,12 @@ void MainWindow::workWitkRow(QStringList &row)
         row.clear();
         return;
     }
-    if(row.at(1).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
+    if(!row.a1t(1).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
     {
         row.clear();
         return;
     }
-    for(int i=0; i<row->size(); i++)
+    for(int i=0; i<row.size(); i++)
     {
         //работаем с STR
         if(i==1)

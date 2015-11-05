@@ -41,7 +41,7 @@ void MainWindow::appendText(QString text)
     ui->plainTextEditTo->setPlainText(str+text);
 }
 
-bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
+bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-1)
 {
     QFile file1(filename);
     if (!file1.open(QIODevice::ReadOnly))
@@ -57,9 +57,13 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
 
     QStringList *rowList = new QStringList (readedFileStr->split("\n"));
     delete readedFileStr;
-    QString header = rowList->at(0);
-    QStringList head = header.split(";");
+    QStringList head = rowList->at(0).split(";");//получение шапки
     int cols=head.size();
+    for(int i=0; i<cols; i++)
+    {
+        head[i].remove("\"");
+        head[i] = head.at(i).trimmed();
+    }
     QVector<QStringList> vect;
     for(int i=1; i<rowList->size(); i++)
     {
@@ -70,24 +74,20 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
             vect.append(row);
     }
     delete rowList;
-    qDebug() << "Всего адресов из СПб в базе: " << vect.size();
-    qDebug() << "Столбцов: " << cols;
+    qDebug() << "Всего строк подходящих по условию:" << vect.size();
+    qDebug() << "Столбцов:" << cols;
 
     //заполняем таблицу
     QTableWidgetItem *ptwi = 0;
     tbl->setColumnCount(cols);
-    //получение шапки
-    for(int i=0; i<cols; i++)
-    {
-        head[i].remove("\"");
-        head[i] = head.at(i).trimmed();
-    }
-    tbl->setHorizontalHeaderLabels(head);
+    tbl->setHorizontalHeaderLabels(head);    //получение шапки
 
     //заполнение таблицы TableWidget
     int rows = vect.size();
-    if(rows > 1000)
-        rows = 1000;
+    if(countRow > 0)
+        if(rows > countRow)
+            rows = countRow;
+    qDebug() << "Всего строк открыто (будет отображено):" << rows;
     for(int row=0; row<rows; row++)
     {
         tbl->insertRow(tbl->rowCount());
@@ -695,62 +695,5 @@ void MainWindow::on_pushButtonOpenBase_clicked()
         return;
     ui->lineEditOpenBase->setText(str);
     clearResultData();
-    openFromCsv(str, ui->tableWidgetBase);
-
-    /*
-    QFile file1(str);
-    if (!file1.open(QIODevice::ReadOnly))
-    {
-        qDebug() << "Ошибка открытия для чтения";
-        return;
-    }
-    QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
-    QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
-    QString *str3 = new QString (decoder->toUnicode(file1.readAll()));
-    delete decoder;
-    file1.close();
-
-    QVector<QStringList> *vect=&_vector;
-    QStringList *rowList = new QStringList (str3->split("\n"));
-    QString header = rowList->at(0);
-    delete str3;
-    for(int i=1; i<rowList->size(); i++)
-    {
-//        qDebug() << rowList.at(i);
-        QStringList row = rowList->at(i).split(";");
-        workWitkRow(row); // **** DO IT Rishat ***
-        if(!row.isEmpty())
-            vect->append(row);
-    }
-    delete rowList;
-    int cols=5;
-    qDebug() << "Всего адресов из СПб в базе: " << vect->size();
-    qDebug() << "Столбцов: " << cols;
-
-    //заполняем таблицу
-    QTableWidget *tbl = ui->tableWidgetBase;
-    QTableWidgetItem *ptwi = 0;
-    tbl->setColumnCount(cols);
-    //получение шапки
-    QStringList lst;
-    for(int i=0; i<cols; i++)
-    {
-        QStringList head = header.split(";");
-        head[i].remove("\"");
-        head[i] = head.at(i).trimmed();
-        lst.append(head.at(i));
-    }
-    tbl->setHorizontalHeaderLabels(lst);
-
-    //заполнение таблицы TableWidget
-    for(int row=0; row<500; row++)
-    {
-        tbl->insertRow(tbl->rowCount());
-        for(int col=0; col<cols; col++)
-        {
-            ptwi = new QTableWidgetItem(vect->at(row).at(col));
-            tbl->setItem(row, col, ptwi);
-        }
-    }
-    */
+    openFromCsv(str, ui->tableWidgetBase, ui->spinBoxRowCount->value());
 }

@@ -13,6 +13,8 @@
 #include <QAxBase>
 #include <QAxObject>
 
+const int CountRow = 1000; //макс. количество строк базы данных которое возможно открыть
+
 namespace Ui {
 class MainWindow;
 }
@@ -50,7 +52,7 @@ private:
     QString _stringResultForCsv;
 
     void appendText(QString text);
-    bool openFromCsv(QString filename, QTableWidget *tbl);
+    bool openFromCsv(QString filename, QTableWidget *tbl, int countRow);
     bool saveToCsv(QString fname, QTableWidget *tbl);
     bool saveToCsv();
     bool saveToXls();

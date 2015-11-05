@@ -16,6 +16,15 @@ MainWindow::MainWindow(QWidget *parent) :
    ui->radioButtonXls->setToolTip(trUtf8("Медленней"));
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
    _vector.reserve(89073);
+   ui->radioButtonCsv->hide();
+   ui->radioButtonXls->hide();
+   ui->pushButtonClear->hide();
+   ui->pushButtonConvert->hide();
+   ui->tableWidgetIn->hide();
+   ui->lineEditOpen->hide();
+   ui->pushButtonOpen->hide();
+   ui->tableWidget->hide();
+   ui->pushButtonSave->setEnabled(true);
 }
 
 MainWindow::~MainWindow()
@@ -34,11 +43,11 @@ void MainWindow::appendText(QString text)
 
 bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
 {
-    QFile file1(str);
+    QFile file1(filename);
     if (!file1.open(QIODevice::ReadOnly))
     {
         qDebug() << "Ошибка открытия для чтения";
-        return;
+        return false;
     }
     QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
     QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
@@ -61,7 +70,7 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
             vect.append(row);
     }
     delete rowList;
-    qDebug() << "Всего адресов из СПб в базе: " << vect->size();
+    qDebug() << "Всего адресов из СПб в базе: " << vect.size();
     qDebug() << "Столбцов: " << cols;
 
     //заполняем таблицу
@@ -76,7 +85,9 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
     tbl->setHorizontalHeaderLabels(head);
 
     //заполнение таблицы TableWidget
-    int rows = vect->size();
+    int rows = vect.size();
+    if(rows > 1000)
+        rows = 1000;
     for(int row=0; row<rows; row++)
     {
         tbl->insertRow(tbl->rowCount());
@@ -97,7 +108,6 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
         qDebug() << "Ошибка открытия файла для записи";
         return false;
     }
-    QTableWidgetItem *ptwi = 0;
     int rows = tbl->rowCount();
     int cols = tbl->columnCount();
     QString stringResultForCsv;
@@ -113,7 +123,9 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
         for(int col=0; col<cols; col++)
         {
             QTableWidgetItem *ptwi = tbl->item(row, col);
-            stringResultForCsv+=ptwi->text()+';';
+            stringResultForCsv+=ptwi->text();
+            if(col<cols-1)
+                stringResultForCsv+=';';
         }
         stringResultForCsv+="\n";
     }
@@ -142,6 +154,9 @@ bool MainWindow::saveToCsv()
 
 void MainWindow::on_pushButtonSave_clicked()
 {
+    //TO DO Only for debug
+    ui->radioButtonCsv->setChecked(true);
+
     QString filter;
     if(ui->radioButtonCsv->isChecked())
         filter="Excel (*.csv)";
@@ -161,7 +176,7 @@ void MainWindow::on_pushButtonSave_clicked()
 
     if(ui->radioButtonCsv->isChecked())
     {
-        if(saveToCsv())
+        if(saveToCsv(_filenameSave, ui->tableWidgetBase))
             ui->statusBar->showMessage("Успешно сохранено", 5000);
         else
             ui->statusBar->showMessage("Ошибка сохранения", 5000);
@@ -679,7 +694,10 @@ void MainWindow::on_pushButtonOpenBase_clicked()
     if(str.isEmpty())
         return;
     ui->lineEditOpenBase->setText(str);
+    clearResultData();
+    openFromCsv(str, ui->tableWidgetBase);
 
+    /*
     QFile file1(str);
     if (!file1.open(QIODevice::ReadOnly))
     {
@@ -734,4 +752,5 @@ void MainWindow::on_pushButtonOpenBase_clicked()
             tbl->setItem(row, col, ptwi);
         }
     }
+    */
 }

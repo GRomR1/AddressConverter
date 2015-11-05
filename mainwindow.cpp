@@ -15,7 +15,6 @@ MainWindow::MainWindow(QWidget *parent) :
            this, SLOT(aboutTriggered(bool)));
    ui->radioButtonXls->setToolTip(trUtf8("Медленней"));
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
-   _vector.reserve(89073);
    ui->radioButtonCsv->hide();
    ui->radioButtonXls->hide();
    ui->pushButtonClear->hide();

@@ -32,6 +32,98 @@ void MainWindow::appendText(QString text)
     ui->plainTextEditTo->setPlainText(str+text);
 }
 
+bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl)
+{
+    QFile file1(str);
+    if (!file1.open(QIODevice::ReadOnly))
+    {
+        qDebug() << "Ошибка открытия для чтения";
+        return;
+    }
+    QTextCodec *defaultTextCodec = QTextCodec::codecForName("Windows-1251");
+    QTextDecoder *decoder = new QTextDecoder(defaultTextCodec);
+    QString *readedFileStr = new QString (decoder->toUnicode(file1.readAll()));
+    delete decoder;
+    file1.close();
+
+    QStringList *rowList = new QStringList (readedFileStr->split("\n"));
+    delete readedFileStr;
+    QString header = rowList->at(0);
+    QStringList head = header.split(";");
+    int cols=head.size();
+    QVector<QStringList> vect;
+    for(int i=1; i<rowList->size(); i++)
+    {
+//        qDebug() << rowList.at(i);
+        QStringList row = rowList->at(i).split(";");
+        workWitkRow(row); // **** DO IT Rishat ***
+        if(!row.isEmpty())
+            vect.append(row);
+    }
+    delete rowList;
+    qDebug() << "Всего адресов из СПб в базе: " << vect->size();
+    qDebug() << "Столбцов: " << cols;
+
+    //заполняем таблицу
+    QTableWidgetItem *ptwi = 0;
+    tbl->setColumnCount(cols);
+    //получение шапки
+    for(int i=0; i<cols; i++)
+    {
+        head[i].remove("\"");
+        head[i] = head.at(i).trimmed();
+    }
+    tbl->setHorizontalHeaderLabels(head);
+
+    //заполнение таблицы TableWidget
+    int rows = vect->size();
+    for(int row=0; row<rows; row++)
+    {
+        tbl->insertRow(tbl->rowCount());
+        for(int col=0; col<cols; col++)
+        {
+            ptwi = new QTableWidgetItem(vect.at(row).at(col));
+            tbl->setItem(row, col, ptwi);
+        }
+    }
+    return true;
+}
+
+bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
+{
+    QFile file1(fname);
+    if (!file1.open(QIODevice::WriteOnly))
+    {
+        qDebug() << "Ошибка открытия файла для записи";
+        return false;
+    }
+    QTableWidgetItem *ptwi = 0;
+    int rows = tbl->rowCount();
+    int cols = tbl->columnCount();
+    QString stringResultForCsv;
+    QStringList strListHeader;
+    for(int col=0; col<cols; col++)
+    {
+        strListHeader.append(tbl->horizontalHeaderItem(col)->text());
+    }
+    stringResultForCsv.append(strListHeader.join(';'));
+    stringResultForCsv+="\n";
+    for(int row=0; row<rows; row++)
+    {
+        for(int col=0; col<cols; col++)
+        {
+            QTableWidgetItem *ptwi = tbl->item(row, col);
+            stringResultForCsv+=ptwi->text()+';';
+        }
+        stringResultForCsv+="\n";
+    }
+    QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
+    QByteArray ba = codec->fromUnicode(stringResultForCsv.toUtf8());
+    file1.write(ba);
+    file1.close();
+    return true;
+}
+
 bool MainWindow::saveToCsv()
 {
     QFile file1(_filenameSave);

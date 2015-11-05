@@ -8,6 +8,7 @@
 #include <QFileDialog>
 #include <QTextCodec>
 #include <QMessageBox>
+#include <QTableWidget>
 
 #include <QAxBase>
 #include <QAxObject>
@@ -49,6 +50,8 @@ private:
     QString _stringResultForCsv;
 
     void appendText(QString text);
+    bool openFromCsv(QString filename, QTableWidget *tbl);
+    bool saveToCsv(QString fname, QTableWidget *tbl);
     bool saveToCsv();
     bool saveToXls();
     void clearResultData();

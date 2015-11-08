@@ -633,20 +633,132 @@ void MainWindow::workWitkRow(QStringList &row)
     QString additional;
     for(int i=0; i<row.size(); i++)
     {
+
         //работаем с STR
         if(i==1)
         {
             //удаляем фразу "г. Санкт-Петербург"
-            //..
-            //удаляем ","
-            //..
+            if (row.at(i).contains("г. Санкт-Петербург,"))
+            {
+                row[i].remove("г. Санкт-Петербург,");
+            }
+            //переносм п. и г. в столбец ADD
+            if (row.at(i).contains("п."))
+            {
+             row[i].remove("п. ");
+             QStringList field = row.at(i).split(",");
+             row[i].remove(field[0]+",");
+             row[6].append(field[0]);
+
+            }
+            if (row.at(i).contains("г."))
+            {
+             row[i].remove("г. ");
+             QStringList field = row.at(i).split(",");
+             row[i].remove(field[0]+",");
+             row[6].append(field[0]);
+
+            }
             //приводим к нижнему регистру
-            //..
+            row[i] = row[i].toLower();
             //работаем с именами элементов (приведение их к одному формату)
             //(ул., пр., наб., ш., б., пер. и пр.)
-            //..
+            if (row.at(i).contains("ул.,"))
+            {
+              row[i].remove("ул.,");
+              row[5].append("ул");
+            }
+            if (row.at(i).contains("пр-кт.,"))
+            {
+              row[i].remove("пр-кт.,");
+              row[5].append("пр-кт");
+            }
+            if (row.at(i).contains("пер.,"))
+            {
+              row[i].remove("пер.,");
+              row[5].append("пер");
+            }
+            if (row.at(i).contains("проезд.,"))
+            {
+              row[i].remove("проезд.,");
+              row[5].append("проезд");
+            }
+            if (row.at(i).contains("линия.,"))
+            {
+              row[i].remove("линия.,");
+              row[5].append("линия");
+            }
+            if (row.at(i).contains("наб.,"))
+            {
+              row[i].remove("наб.,");
+              row[5].append("наб");
+            }
+            if (row.at(i).contains("парк.,"))
+            {
+              row[i].remove("парк.,");
+              row[5].append("парк");
+            }
+            if (row.at(i).contains("б-р.,"))
+            {
+              row[i].remove("б-р.,");
+              row[5].append("б-р");
+            }
+            if (row.at(i).contains("ш.,"))
+            {
+              row[i].remove("ш.,");
+              row[5].append("ш");
+            }
+            if (row.at(i).contains("сад.,"))
+            {
+              row[i].remove("сад.,");
+              row[5].append("сад");
+            }
+            if (row.at(i).contains("остров.,"))
+            {
+              row[i].remove("остров.,");
+              row[5].append("остров");
+            }
+            if (row.at(i).contains("пл.,"))
+            {
+              row[i].remove("пл.,");
+              row[5].append("пл");
+            }
+            if (row.at(i).contains("аллея.,"))
+            {
+              row[i].remove("аллея.,");
+              row[5].append("аллея");
+            }
+            if (row.at(i).contains("кв-л.,"))
+            {
+              row[i].remove("кв-л.,");
+              row[5].append("кв-л");
+            }
+            if (row.at(i).contains("снт.,"))
+            {
+              row[i].remove("снт.,");
+              row[5].append("снт");
+            }
+            if (row.at(i).contains("тер.,"))
+            {
+              row[i].remove("тер.,");
+              row[5].append("тер");
+            }
+
+
             //работа со скобками
-            //..
+           /* if (row.at(i).contains("(") && row.at(i).contains(")"))
+            {
+                row[i].remove(QRegExp("( (.+) )"));
+            }*/
+//            QString str = "п. Парголово, Дальневосточная (Михайловка) ул., ";
+//            // QString str1 = "aaa bbb ccc";
+//             if (str.contains("(") && str.contains(")")){
+
+//                 str.remove(QRegExp("\*(.+)"));
+//             }
+
+//            qDebug() << str;
+
         }
 
         //работаем с SID и BID
@@ -658,19 +770,104 @@ void MainWindow::workWitkRow(QStringList &row)
         //работаем с B
         if(i==3)
         {
-            //выделение корпуса (литеры) из содержимого ячейки
-            //..
+
             //приведение к формату: "%n" - %n - число
-            //..
+            if (row.at(i).contains("д."))
+            {
+                row[i].remove("д.");
+            }
             //удаление записи если это не адрес (напр. "а/я" или "нетр..")
-            //..
+            if (row.at(i).contains("нетр") || row.at(i).contains("а/я")|| row.at(i).contains("ая"))
+            {
+                row.clear();
+                return;
+            }
+            //выделение корпуса (литеры) из содержимого ячейки
+            if (row.at(i).contains("/"))
+            {
+                QRegExp reg("/(.+)");
+                int pos(0);
+                while ((pos = reg.indexIn(row.at(i), pos)) != -1) {
+                    row[4].append( reg.cap(1) );
+                    pos += reg.matchedLength();
+                }
+                QString copy = row.at(i);
+                row[i].clear();
+                copy.remove(reg);
+                row[3].append(copy);
+            }
+
+            // работа с "\"
+            if (row.at(i).contains('\\'))
+            {
+               // row[i].clear();
+                //row[i].append("1");
+              /*  QRegExp reg("\\(.+)");
+                int pos(0);
+                while ((pos = reg.indexIn(row.at(i), pos)) != -1) {
+                    row[4].append( reg.cap(1) );
+                    pos += reg.matchedLength();
+                }
+                QString copy = row.at(i);
+                row[i].clear();
+                copy.remove(reg);
+                row[3].append(copy);*/
+            }
+
+            if (row.at(i).contains(QRegExp ("[а-я]|[А-Я]")))
+            {
+               QRegExp reg("[а-я]|[А-Я]");
+                int pos(0);
+                QString copy1 = row.at(4);
+                row[4].clear();
+                while ((pos = reg.indexIn(row.at(i), pos)) != -1) {
+                    row[4].append(copy1+ reg.cap());
+                    pos += reg.matchedLength();
+                }
+                QString copy = row.at(i);
+
+                row[i].clear();
+                copy.remove(reg);
+                row[3].append(copy);
+            }
         }
 
         //работаем с K
         if(i==4)
         {
             //удаление названия элемента ("корп.", "лит." и пр.)
-            //..
+            if (row.at(i).contains("ЛИТ."))
+            {
+              row[i].remove("ЛИТ.");
+            }
+            if (row.at(i).contains("лит"))
+            {
+              row[i].remove("лит");
+            }
+            if (row.at(i).contains("лит."))
+            {
+              row[i].remove("лит.");
+            }
+            if (row.at(i).contains("ЛИТЕ"))
+            {
+              row[i].remove("ЛИТЕ");
+            }
+            if (row.at(i).contains("ЛИТ-"))
+            {
+              row[i].remove("ЛИТ-");
+            }
+            if (row.at(i).contains(",ПОМ."))
+            {
+              row[i].remove(",ПОМ.");
+            }
+            if (row.at(i).contains("ЛИТ"))
+            {
+              row[i].remove("ЛИТ");
+            }
+            if (row.at(i).contains("ер"))
+            {
+              row[i].remove("ер");
+            }
             //приведение к формату: "%n|%c" - %n - число %a - буква(-ы)
             //..
         }

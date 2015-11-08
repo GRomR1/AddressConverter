@@ -42,6 +42,7 @@ void MainWindow::appendText(QString text)
 
 bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-1)
 {
+    int n1 = QTime::currentTime().msecsSinceStartOfDay();
     QFile file1(filename);
     if (!file1.open(QIODevice::ReadOnly))
     {
@@ -87,8 +88,15 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
         }
     }
     delete rowList;
-//    qDebug() << "Всего строк подходящих по условию:" << vect.size();
+    int n2 = QTime::currentTime().msecsSinceStartOfDay();
+    qDebug() << "Времени затрачено на чтение и парсинг" << n2-n1 << QTime().addMSecs(n2-n1).toString();
+    qDebug() << "Всего строк подходящих по условию:" << vect.size();
     qDebug() << "Столбцов:" << cols;
+
+    qDebug() << (saveToCsv("corrAdd_All.csv", head, vect)? "ok": "error write");
+    int n4 = QTime::currentTime().msecsSinceStartOfDay();
+    qDebug() << "Времени затрачено на запись" << n4-n2 << QTime().addMSecs(n4-n2).toString();
+
 
     //заполняем таблицу
     QTableWidgetItem *ptwi = 0;
@@ -99,6 +107,7 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
     if(countRow > 0)
         if(rows > countRow)
             rows = countRow;
+    rows = 1000; // ***********
     qDebug() << "Всего строк открыто (будет отображено):" << rows;
     for(int row=0; row<rows; row++)
     {
@@ -109,6 +118,8 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
             tbl->setItem(row, col, ptwi);
         }
     }
+    int n3 = QTime::currentTime().msecsSinceStartOfDay();
+    qDebug() << QTime().addMSecs(n3-n1).toString();
     return true;
 }
 
@@ -130,7 +141,7 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
     }
     stringResultForCsv.append(strListHeader.join(';'));
     stringResultForCsv+="\n";
-    qDebug() << stringResultForCsv;
+//    qDebug() << stringResultForCsv;
     for(int row=0; row<rows; row++)
     {
         for(int col=0; col<cols; col++)
@@ -149,6 +160,38 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
     return true;
 }
 
+
+bool MainWindow::saveToCsv(QString fname, QStringList head, QVector<QStringList> &vect)
+{
+    QFile file1(fname);
+    if (!file1.open(QIODevice::WriteOnly))
+    {
+        qDebug() << "Ошибка открытия файла для записи";
+        return false;
+    }
+    int rows = vect.size();
+    int cols = head.size();
+    QString stringResultForCsv;
+    stringResultForCsv.append(head.join(';'));
+    stringResultForCsv+="\n";
+//    qDebug() << stringResultForCsv;
+    for(int row=0; row<rows; row++)
+    {
+        for(int col=0; col<cols; col++)
+        {
+
+            stringResultForCsv+=vect.at(row).at(col);
+            if(col<cols-1)
+                stringResultForCsv+=';';
+        }
+        stringResultForCsv+="\n";
+    }
+    QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
+    QByteArray ba = codec->fromUnicode(stringResultForCsv.toUtf8());
+    file1.write(ba);
+    file1.close();
+    return true;
+}
 
 void MainWindow::on_pushButtonSave_clicked()
 {
@@ -631,8 +674,13 @@ void MainWindow::workWitkRow(QStringList &row)
     }
     QString ename;
     QString additional;
+    int numbBCol=3; //number of B column
+    int numbKCol=4; //number of B column
     for(int i=0; i<row.size(); i++)
     {
+        //удаляем боковые символы
+        row[i].remove("\"");
+        row[i] = row.at(i).trimmed();
 
         //работаем с STR
         if(i==1)
@@ -648,16 +696,14 @@ void MainWindow::workWitkRow(QStringList &row)
              row[i].remove("п. ");
              QStringList field = row.at(i).split(",");
              row[i].remove(field[0]+",");
-             row[6].append(field[0]);
-
+             additional.append(field[0]);
             }
             if (row.at(i).contains("г."))
             {
              row[i].remove("г. ");
              QStringList field = row.at(i).split(",");
              row[i].remove(field[0]+",");
-             row[6].append(field[0]);
-
+             additional.append(field[0]);
             }
             //приводим к нижнему регистру
             row[i] = row[i].toLower();
@@ -666,84 +712,95 @@ void MainWindow::workWitkRow(QStringList &row)
             if (row.at(i).contains("ул.,"))
             {
               row[i].remove("ул.,");
-              row[5].append("ул");
+              ename.append("ул");
             }
             if (row.at(i).contains("пр-кт.,"))
             {
               row[i].remove("пр-кт.,");
-              row[5].append("пр-кт");
+              ename.append("пр-кт");
             }
             if (row.at(i).contains("пер.,"))
             {
               row[i].remove("пер.,");
-              row[5].append("пер");
+              ename.append("пер");
             }
             if (row.at(i).contains("проезд.,"))
             {
               row[i].remove("проезд.,");
-              row[5].append("проезд");
+              ename.append("проезд");
             }
             if (row.at(i).contains("линия.,"))
             {
               row[i].remove("линия.,");
-              row[5].append("линия");
+              ename.append("линия");
             }
             if (row.at(i).contains("наб.,"))
             {
               row[i].remove("наб.,");
-              row[5].append("наб");
+              ename.append("наб");
             }
             if (row.at(i).contains("парк.,"))
             {
               row[i].remove("парк.,");
-              row[5].append("парк");
+              ename.append("парк");
             }
             if (row.at(i).contains("б-р.,"))
             {
               row[i].remove("б-р.,");
-              row[5].append("б-р");
+              ename.append("б-р");
             }
             if (row.at(i).contains("ш.,"))
             {
               row[i].remove("ш.,");
-              row[5].append("ш");
+              ename.append("ш");
             }
             if (row.at(i).contains("сад.,"))
             {
               row[i].remove("сад.,");
-              row[5].append("сад");
+              ename.append("сад");
             }
             if (row.at(i).contains("остров.,"))
             {
               row[i].remove("остров.,");
-              row[5].append("остров");
+              ename.append("остров");
             }
             if (row.at(i).contains("пл.,"))
             {
               row[i].remove("пл.,");
-              row[5].append("пл");
+              ename.append("пл");
             }
             if (row.at(i).contains("аллея.,"))
             {
               row[i].remove("аллея.,");
-              row[5].append("аллея");
+              ename.append("аллея");
             }
             if (row.at(i).contains("кв-л.,"))
             {
               row[i].remove("кв-л.,");
-              row[5].append("кв-л");
+              ename.append("кв-л");
             }
             if (row.at(i).contains("снт.,"))
             {
               row[i].remove("снт.,");
-              row[5].append("снт");
+              ename.append("снт");
             }
             if (row.at(i).contains("тер.,"))
             {
               row[i].remove("тер.,");
-              row[5].append("тер");
+              ename.append("тер");
+            }
+            if (row.at(i).contains("дор.,"))
+            {
+              row[i].remove("дор.,");
+              ename.append("дор");
             }
 
+            row[i] = row.at(i).trimmed();
+            if(row.at(i).isEmpty())
+            {
+                row.clear();
+                return;
+            }
 
             //работа со скобками
            /* if (row.at(i).contains("(") && row.at(i).contains(")"))
@@ -770,7 +827,6 @@ void MainWindow::workWitkRow(QStringList &row)
         //работаем с B
         if(i==3)
         {
-
             //приведение к формату: "%n" - %n - число
             if (row.at(i).contains("д."))
             {
@@ -788,13 +844,13 @@ void MainWindow::workWitkRow(QStringList &row)
                 QRegExp reg("/(.+)");
                 int pos(0);
                 while ((pos = reg.indexIn(row.at(i), pos)) != -1) {
-                    row[4].append( reg.cap(1) );
+                    row[numbKCol].append( reg.cap(1) );
                     pos += reg.matchedLength();
                 }
                 QString copy = row.at(i);
                 row[i].clear();
                 copy.remove(reg);
-                row[3].append(copy);
+                row[numbBCol].append(copy);
             }
 
             // работа с "\"
@@ -814,23 +870,25 @@ void MainWindow::workWitkRow(QStringList &row)
                 row[3].append(copy);*/
             }
 
-            if (row.at(i).contains(QRegExp ("[а-я]|[А-Я]")))
+            QRegExp reg("[а-яА-ЯA-za-z]");
+//            QRegExp reg("\\w+");
+            if (row.at(i).contains(reg))
             {
-               QRegExp reg("[а-я]|[А-Я]");
                 int pos(0);
-                QString copy1 = row.at(4);
-                row[4].clear();
-                while ((pos = reg.indexIn(row.at(i), pos)) != -1) {
-                    row[4].append(copy1+ reg.cap());
+                QString copy1 = row.at(numbKCol);
+//                row[numbKCol].clear();
+                while ((pos = reg.indexIn(row.at(i), pos)) != -1)
+                {
+                    row[numbKCol].append(copy1+ reg.cap());
                     pos += reg.matchedLength();
                 }
+//                qDebug() << pos << row[numbKCol];
                 QString copy = row.at(i);
-
                 row[i].clear();
                 copy.remove(reg);
-                row[3].append(copy);
+                row[numbBCol].append(copy);
             }
-        }
+        }//end work with B
 
         //работаем с K
         if(i==4)
@@ -838,38 +896,44 @@ void MainWindow::workWitkRow(QStringList &row)
             //удаление названия элемента ("корп.", "лит." и пр.)
             if (row.at(i).contains("ЛИТ."))
             {
-              row[i].remove("ЛИТ.");
+                row[i].remove("ЛИТ.");
             }
             if (row.at(i).contains("лит"))
             {
-              row[i].remove("лит");
+                row[i].remove("лит");
             }
             if (row.at(i).contains("лит."))
             {
-              row[i].remove("лит.");
+                row[i].remove("лит.");
             }
             if (row.at(i).contains("ЛИТЕ"))
             {
-              row[i].remove("ЛИТЕ");
+                row[i].remove("ЛИТЕ");
             }
             if (row.at(i).contains("ЛИТ-"))
             {
-              row[i].remove("ЛИТ-");
+                row[i].remove("ЛИТ-");
             }
             if (row.at(i).contains(",ПОМ."))
             {
-              row[i].remove(",ПОМ.");
+                row[i].remove(",ПОМ.");
             }
             if (row.at(i).contains("ЛИТ"))
             {
-              row[i].remove("ЛИТ");
+                row[i].remove("ЛИТ");
             }
             if (row.at(i).contains("ер"))
             {
-              row[i].remove("ер");
+                row[i].remove("ер");
             }
+
             //приведение к формату: "%n|%c" - %n - число %a - буква(-ы)
-            //..
+            QRegExp reg("[^A-Za-zА-Яа-я0-9]*");
+            if (row.at(i).contains(reg))
+            {
+                row[i].remove(reg);
+            }
+
         }
 
         //работаем с ENAME
@@ -889,11 +953,6 @@ void MainWindow::workWitkRow(QStringList &row)
             if(!additional.isEmpty())
                 row[i] = additional;
         }
-
-        //удаляем боковые символы
-        row[i].remove("\"");
-        row[i] = row.at(i).trimmed();
-
     }
 }
 

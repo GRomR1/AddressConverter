@@ -9,6 +9,7 @@
 #include <QTextCodec>
 #include <QMessageBox>
 #include <QTableWidget>
+#include <QTime>
 
 #include <QAxBase>
 #include <QAxObject>
@@ -54,6 +55,7 @@ private:
     void appendText(QString text);
     bool openFromCsv(QString filename, QTableWidget *tbl, int countRow);
     bool saveToCsv(QString fname, QTableWidget *tbl);
+    bool saveToCsv(QString fname, QStringList head, QVector<QStringList> &vect);
     bool saveToXls();
     void clearResultData();
 };

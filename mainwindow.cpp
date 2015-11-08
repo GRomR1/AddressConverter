@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
    ui->radioButtonCsv->hide();
    ui->radioButtonXls->hide();
-   ui->pushButtonClear->hide();
+//   ui->pushButtonClear->hide();
    ui->pushButtonConvert->hide();
    ui->tableWidgetIn->hide();
    ui->lineEditOpen->hide();
@@ -57,6 +57,10 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
     QStringList *rowList = new QStringList (readedFileStr->split("\n"));
     delete readedFileStr;
     QStringList head = rowList->at(0).split(";");//получение шапки
+    if(head.size()<6)
+        head.append("ENAME");
+    if(head.size()<7)
+        head.append("ADD");
     int cols=head.size();
     for(int i=0; i<cols; i++)
     {
@@ -64,16 +68,26 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
         head[i] = head.at(i).trimmed();
     }
     QVector<QStringList> vect;
+    int rows = 0;
     for(int i=1; i<rowList->size(); i++)
     {
 //        qDebug() << rowList.at(i);
         QStringList row = rowList->at(i).split(";");
         workWitkRow(row); // **** DO IT Rishat ***
         if(!row.isEmpty())
+        {
+            rows++;
             vect.append(row);
+            //оставливаем обработку если получено нужное количество строк
+            if(countRow > 0 && rows >= countRow)
+            {
+                rows = countRow;
+                break;
+            }
+        }
     }
     delete rowList;
-    qDebug() << "Всего строк подходящих по условию:" << vect.size();
+//    qDebug() << "Всего строк подходящих по условию:" << vect.size();
     qDebug() << "Столбцов:" << cols;
 
     //заполняем таблицу
@@ -82,7 +96,6 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
     tbl->setHorizontalHeaderLabels(head);    //получение шапки
 
     //заполнение таблицы TableWidget
-    int rows = vect.size();
     if(countRow > 0)
         if(rows > countRow)
             rows = countRow;
@@ -117,6 +130,7 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
     }
     stringResultForCsv.append(strListHeader.join(';'));
     stringResultForCsv+="\n";
+    qDebug() << stringResultForCsv;
     for(int row=0; row<rows; row++)
     {
         for(int col=0; col<cols; col++)
@@ -130,21 +144,6 @@ bool MainWindow::saveToCsv(QString fname, QTableWidget *tbl)
     }
     QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
     QByteArray ba = codec->fromUnicode(stringResultForCsv.toUtf8());
-    file1.write(ba);
-    file1.close();
-    return true;
-}
-
-bool MainWindow::saveToCsv()
-{
-    QFile file1(_filenameSave);
-    if (!file1.open(QIODevice::WriteOnly))
-    {
-        qDebug() << "Ошибка открытия файла для записи";
-        return false;
-    }
-    QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
-    QByteArray ba = codec->fromUnicode(_stringResultForCsv.toUtf8());
     file1.write(ba);
     file1.close();
     return true;
@@ -361,13 +360,14 @@ void MainWindow::on_pushButtonOpen_clicked()
 
 void MainWindow::on_pushButtonClear_clicked()
 {
-    ui->plainTextEditFrom->clear();
-    ui->pushButtonConvert->setEnabled(false);
-    ui->pushButtonSave->setEnabled(false);
-    ui->pushButtonClear->setEnabled(false);
-    ui->lineEditOpen->setEnabled(false);
-    ui->lineEditOpen->setText(trUtf8("Нажмите открыть файл"));
-    ui->lineEditOpen->clear();
+//    ui->plainTextEditFrom->clear();
+//    ui->pushButtonConvert->setEnabled(false);
+//    ui->pushButtonSave->setEnabled(false);
+//    ui->pushButtonClear->setEnabled(false);
+//    ui->lineEditOpen->setEnabled(false);
+//    ui->lineEditOpen->setText(trUtf8("Нажмите открыть файл"));
+    ui->lineEditOpenBase->setText(trUtf8("Нажмите открыть файл"));
+//    ui->lineEditOpen->clear();
     clearResultData();
 }
 
@@ -622,16 +622,15 @@ void MainWindow::aboutTriggered(bool checked)
 
 void MainWindow::workWitkRow(QStringList &row)
 {
-    if(row.size()!=5)
-    {
-        row.clear();
-        return;
-    }
+    while(row.size()<7)
+        row.append("");
     if(!row.at(1).contains("г. Санкт-Петербург", Qt::CaseInsensitive))
     {
         row.clear();
         return;
     }
+    QString ename;
+    QString additional;
     for(int i=0; i<row.size(); i++)
     {
         //работаем с STR
@@ -674,6 +673,24 @@ void MainWindow::workWitkRow(QStringList &row)
             //..
             //приведение к формату: "%n|%c" - %n - число %a - буква(-ы)
             //..
+        }
+
+        //работаем с ENAME
+        if(i==5)
+        {
+            //присваивание выделеннного названия структурного элемента из столбца STREET
+            //например, ул., пр-т, ш. и пр.
+            if(!ename.isEmpty())
+                row[i] = ename;
+        }
+
+        //работаем с ADD
+        if(i==6)
+        {
+            //присваивание выделенной доп.информации из столбца STREET
+            //например, то что содержится в скобках
+            if(!additional.isEmpty())
+                row[i] = additional;
         }
 
         //удаляем боковые символы

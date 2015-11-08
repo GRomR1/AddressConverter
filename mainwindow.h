@@ -54,7 +54,6 @@ private:
     void appendText(QString text);
     bool openFromCsv(QString filename, QTableWidget *tbl, int countRow);
     bool saveToCsv(QString fname, QTableWidget *tbl);
-    bool saveToCsv();
     bool saveToXls();
     void clearResultData();
 };

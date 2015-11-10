@@ -13,15 +13,16 @@ MainWindow::MainWindow(QWidget *parent) :
    QAction *ab1 = ui->menuBar->addAction(trUtf8("О программе"));
    connect(ab1, SIGNAL(triggered(bool)),
            this, SLOT(aboutTriggered(bool)));
+   _vectorBase.reserve(87477);
    ui->radioButtonXls->setToolTip(trUtf8("Медленней"));
    ui->radioButtonCsv->setToolTip(trUtf8("Быстрее"));
    ui->radioButtonCsv->hide();
    ui->radioButtonXls->hide();
 //   ui->pushButtonClear->hide();
-   ui->pushButtonConvert->hide();
-   ui->tableWidgetIn->hide();
-   ui->lineEditOpen->hide();
-   ui->pushButtonOpen->hide();
+//   ui->pushButtonConvert->hide();
+//   ui->tableWidgetIn->hide();
+//   ui->lineEditOpen->hide();
+//   ui->pushButtonOpen->hide();
    ui->tableWidget->hide();
    ui->pushButtonSave->setEnabled(true);
 }
@@ -42,7 +43,7 @@ void MainWindow::appendText(QString text)
 
 bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-1)
 {
-    int n1 = QTime::currentTime().msecsSinceStartOfDay();
+    qint64 n1 = QDateTime::currentMSecsSinceEpoch();
     QFile file1(filename);
     if (!file1.open(QIODevice::ReadOnly))
     {
@@ -68,17 +69,20 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
         head[i].remove("\"");
         head[i] = head.at(i).trimmed();
     }
-    QVector<QStringList> vect;
+    QVector<QStringList> *vect=&_vectorBase;
+    vect->clear();
     int rows = 0;
+    bool makeParsing = !ui->checkBoxNotParse->isChecked();
     for(int i=1; i<rowList->size(); i++)
     {
 //        qDebug() << rowList.at(i);
         QStringList row = rowList->at(i).split(";");
-        workWitkRow(row); // **** DO IT Rishat ***
+        if(makeParsing)
+            workWitkRow(row); // **** DO IT Rishat ***
         if(!row.isEmpty())
         {
             rows++;
-            vect.append(row);
+            vect->append(row);
             //оставливаем обработку если получено нужное количество строк
             if(countRow > 0 && rows >= countRow)
             {
@@ -88,38 +92,40 @@ bool MainWindow::openFromCsv(QString filename, QTableWidget *tbl, int countRow=-
         }
     }
     delete rowList;
-    int n2 = QTime::currentTime().msecsSinceStartOfDay();
-    qDebug() << "Времени затрачено на чтение и парсинг" << n2-n1 << QTime().addMSecs(n2-n1).toString();
-    qDebug() << "Всего строк подходящих по условию:" << vect.size();
+    qint64 n2 = QDateTime::currentMSecsSinceEpoch();
+    qDebug() << "Времени затрачено на чтение и парсинг" << n2-n1 << QTime().addMSecs(n2-n1).toString("hh:mm:ss.zzz");
+    qDebug() << "Всего строк подходящих по условию:" << vect->size();
     qDebug() << "Столбцов:" << cols;
 
-    qDebug() << (saveToCsv("corrAdd_All.csv", head, vect)? "ok": "error write");
-    int n4 = QTime::currentTime().msecsSinceStartOfDay();
-    qDebug() << "Времени затрачено на запись" << n4-n2 << QTime().addMSecs(n4-n2).toString();
+//    qDebug() << (saveToCsv("corrAdd_All.csv", head, *vect)? "ok": "error write");
+//    qint64 n4 = QDateTime::currentMSecsSinceEpoch();
+//    qDebug() << "Времени затрачено на запись" << n4-n2 << QTime().addMSecs(n4-n2).toString("hh:mm:ss.zzz");
 
-
-    //заполняем таблицу
-    QTableWidgetItem *ptwi = 0;
-    tbl->setColumnCount(cols);
-    tbl->setHorizontalHeaderLabels(head);    //получение шапки
-
-    //заполнение таблицы TableWidget
-    if(countRow > 0)
-        if(rows > countRow)
-            rows = countRow;
-    rows = 1000; // ***********
-    qDebug() << "Всего строк открыто (будет отображено):" << rows;
-    for(int row=0; row<rows; row++)
+    //заполняем таблицу TableWidget
+    if(!ui->checkBoxHideResult->isChecked())
     {
-        tbl->insertRow(tbl->rowCount());
-        for(int col=0; col<cols; col++)
+        if(countRow > 0)
+            if(rows > countRow)
+                rows = countRow;
+        qDebug() << "Всего строк открыто (будет отображено):" << rows;
+        QTableWidgetItem *ptwi = 0;
+        tbl->setColumnCount(cols);
+        tbl->setHorizontalHeaderLabels(head);    //получение шапки
+
+        for(int row=0; row<rows; row++)
         {
-            ptwi = new QTableWidgetItem(vect.at(row).at(col));
-            tbl->setItem(row, col, ptwi);
+            tbl->insertRow(tbl->rowCount());
+            QStringList rowList = vect->at(row);
+            for(int col=0; col<rowList.size(); col++)
+            {
+                ptwi = new QTableWidgetItem(rowList.at(col));
+                tbl->setItem(row, col, ptwi);
+            }
         }
+        int n3 = QDateTime::currentMSecsSinceEpoch();
+        qDebug() << "Времени затрачено на отображение" << QTime().addMSecs(n3-n1).toString("hh:mm:ss.zzz");
     }
-    int n3 = QTime::currentTime().msecsSinceStartOfDay();
-    qDebug() << QTime().addMSecs(n3-n1).toString();
+
     return true;
 }
 
@@ -177,14 +183,16 @@ bool MainWindow::saveToCsv(QString fname, QStringList head, QVector<QStringList>
 //    qDebug() << stringResultForCsv;
     for(int row=0; row<rows; row++)
     {
-        for(int col=0; col<cols; col++)
-        {
 
-            stringResultForCsv+=vect.at(row).at(col);
-            if(col<cols-1)
+        QStringList rowList = vect.at(row);
+        for(int col=0; col<rowList.size(); col++)
+        {
+            stringResultForCsv+=rowList.at(col);
+            if(col<rowList.size()-1)
                 stringResultForCsv+=';';
         }
-        stringResultForCsv+="\n";
+        if(row<rows-1)
+            stringResultForCsv+="\n";
     }
     QTextCodec *codec = QTextCodec::codecForName("Windows-1251");
     QByteArray ba = codec->fromUnicode(stringResultForCsv.toUtf8());
@@ -348,10 +356,77 @@ void MainWindow::on_pushButtonOpen_clicked()
     }
     tbl->setHorizontalHeaderLabels(lst);
 
+    QVector<QStringList> *vect=&_vectorIn;
+    vect->clear();
+    int n=10; //>2
+    if(n<2)
+        assert(0);
     //заполнение таблицы TableWidget
+    int nNumbersInAddrColumn=0;// количество случаев встречания цифры в ячейке с адресом (в столбце с номером 1)
     for(int row=2; row<=rows; row++)
     {
         tbl->insertRow(tbl->rowCount());
+        QStringList rowList;
+        for(int col=1; col<=cols; col++)
+        {
+            // получение указателя на ячейку [row][col] ((!)нумерация с единицы)
+            QAxObject* cell = sheet->querySubObject("Cells(QVariant,QVariant)", row, col);
+            // получение содержимого
+            QString result = cell->property("Value").toString();
+//            qDebug() << row << col << result;
+            if(col==1+1 && result.contains(QRegExp("\\d")))
+            {
+//                qDebug() << row << col << result;
+                nNumbersInAddrColumn++;
+            }
+            rowList.append(result);
+            ptwi = new QTableWidgetItem(result);
+            tbl->setItem(row-2, col-1, ptwi);
+            // освобождение памяти
+            delete cell;
+
+        }
+        vect->append(rowList);
+        if(row==n+1)
+            break;
+    }
+//    qDebug() << "vect size after 10" << vect->size();
+    qDebug() << "nNumbersInAddrColumn=" << nNumbersInAddrColumn;
+//    assert(0);
+    //определяем где содержится адресс, номер дома и корпус
+//    int nNumbersInAddrColumn=0;// количество случаев встречания цифры в ячейке с адресом (в столбце с номером 1)
+//    for(int row=0; row<n; row++)
+//    {
+//        if(vect->at(row).size()>1 && vect->at(row).at(1).contains(QRegExp("\\d")))
+//            nNumbersInAddrColumn++;
+//    }
+    //если цифра в столбце с номером 1 встретилась более 50%, то делаем вывод что
+    //номер дома и корпус указаны в этом же столбце
+    bool addrWithBuild=false;
+    if(nNumbersInAddrColumn >= n/2)
+    {
+        addrWithBuild=true;
+    }
+    //парсим уже прочитанные строки
+    QVector<QStringList> *tempVect = new QVector<QStringList>;
+    tempVect->reserve(n);
+    for(int row=0; row<n; row++)
+    {
+        QStringList rowList=vect->at(row);
+        if(addrWithBuild)
+            workWitkRowIn(rowList, 1, 1, 1);
+        else
+            workWitkRowIn(rowList, 1, 2, 3);
+        if(!rowList.isEmpty())
+            tempVect->append(rowList);
+    }
+    (*vect)=(*tempVect);
+    qDebug() << "tempVect completed. size" << tempVect->size();
+    delete tempVect;
+    for(int row=2+n; row<=rows; row++)
+    {
+        tbl->insertRow(tbl->rowCount());
+        QStringList rowList;
         for(int col=1; col<=cols; col++)
         {
             // получение указателя на ячейку [row][col] ((!)нумерация с единицы)
@@ -359,12 +434,20 @@ void MainWindow::on_pushButtonOpen_clicked()
             // получение содержимого
             QVariant result = cell->property("Value");
 //            qDebug() << row << col << result.toString();
+            rowList.append(result.toString());
             ptwi = new QTableWidgetItem(result.toString());
             tbl->setItem(row-2, col-1, ptwi);
             // освобождение памяти
             delete cell;
         }
+        if(addrWithBuild)
+            workWitkRowIn(rowList, 1, 1, 1);
+        else
+            workWitkRowIn(rowList, 1, 2, 3);
+        if(!rowList.isEmpty())
+            vect->append(rowList);
     }
+    qDebug() << "vect" << vect->size();
 
     // освобождение памяти
     usedRange->clear();
@@ -398,7 +481,7 @@ void MainWindow::on_pushButtonOpen_clicked()
     delete excel;
     excel = NULL;
 
-    ui->pushButtonConvert->setEnabled(true);
+//    ui->pushButtonConvert->setEnabled(true);
 }
 
 void MainWindow::on_pushButtonClear_clicked()
@@ -662,6 +745,295 @@ void MainWindow::aboutTriggered(bool checked)
     QMessageBox::about(this, tr("О программе"), text);
 }
 
+static int nDebugString = 0;
+void MainWindow::workWitkRowIn(QStringList &row, int colAddr=1, int colB=2, int colK=3)
+{
+    qDebug() << "+++" << row << colAddr << colB << colK;
+    nDebugString++;
+//    if(nDebugString>25)
+//        assert(0);
+
+    QString ename;
+    QString additional;
+    QString build;
+    QString korp;
+    bool isOneColumnAddr=false;
+    if(colAddr==colB && colAddr==colK)
+    {
+        isOneColumnAddr=true;
+    }
+    for(int i=0; i<row.size(); i++)
+    {
+        //удаляем боковые символы
+//        row[i].remove("\"");
+        row[i] = row.at(i).trimmed();
+        //приводим к нижнему регистру
+        row[i] = row[i].toLower();
+
+        //работаем с адресом
+        if(i==colAddr)
+        {
+            //переносм п. и г. в столбец ADD
+            if (row.at(i).contains("п."))
+            {
+                row[i].remove("п. ");
+                QStringList field = row.at(i).split(",");
+                row[i].remove(field[0]+",");
+                additional.append(field[0]);
+            }
+            if (row.at(i).contains("г."))
+            {
+                row[i].remove("г. ");
+                QStringList field = row.at(i).split(",");
+                row[i].remove(field[0]+",");
+                additional.append(field[0]);
+            }
+            //работаем с именами элементов (приведение их к одному формату)
+            //(ул., пр., наб., ш., б., пер. и пр.)
+            if (row.at(i).contains("ул."))
+            {
+              row[i].remove("ул.");
+              ename.append("ул");
+            }
+            if (row.at(i).contains("пр-кт"))
+            {
+              row[i].remove("пр-кт");
+              ename.append("пр-кт");
+            }
+            if (row.at(i).contains("пр."))
+            {
+              row[i].remove("пр.");
+              ename.append("пр-кт");
+            }
+            if (row.at(i).contains("пер."))
+            {
+              row[i].remove("пер.");
+              ename.append("пер");
+            }
+            if (row.at(i).contains("проезд"))
+            {
+              row[i].remove("проезд");
+              ename.append("проезд");
+            }
+            if (row.at(i).contains("линия"))
+            {
+              row[i].remove("линия");
+              ename.append("линия");
+            }
+            if (row.at(i).contains("наб."))
+            {
+              row[i].remove("наб.");
+              ename.append("наб");
+            }
+            if (row.at(i).contains("парк"))
+            {
+              row[i].remove("парк");
+              ename.append("парк");
+            }
+            if (row.at(i).contains("б-р"))
+            {
+              row[i].remove("б-р");
+              ename.append("б-р");
+            }
+            if (row.at(i).contains("бульвар"))
+            {
+              row[i].remove("б-р");
+              ename.append("б-р");
+            }
+            if (row.at(i).contains("ш."))
+            {
+              row[i].remove("ш.");
+              ename.append("ш");
+            }
+            if (row.at(i).contains("сад"))
+            {
+              row[i].remove("сад");
+              ename.append("сад");
+            }
+            if (row.at(i).contains("пл."))
+            {
+              row[i].remove("пл.");
+              ename.append("пл");
+            }
+            if (row.at(i).contains("снт"))
+            {
+              row[i].remove("снт");
+              ename.append("снт");
+            }
+            if (row.at(i).contains("тер."))
+            {
+              row[i].remove("тер.");
+              ename.append("тер");
+            }
+            if (row.at(i).contains("дор."))
+            {
+              row[i].remove("дор.");
+              ename.append("дор");
+            }
+
+            //работа со скобками
+            int n1=row.at(i).indexOf('(');
+            if (n1>0 && (row.at(i).indexOf(')',n1)>0))
+            {
+                int n2=row.at(i).indexOf(')', n1);
+                int n3=n2-n1;
+                additional = row[i].mid(n1+1, n3-1);
+                row[i].remove(n1, n3+1);
+            }
+        }
+
+//        //работаем с SID и BID
+//        if(i==0 || i==2)
+//        {
+//            //..
+//        }
+
+        //работаем с B
+        if(i==colB)
+        {
+            //приведение к формату: "%n" - %n - число
+            if (row.at(i).contains("д."))
+            {
+                int n1=row.at(i).indexOf("д.");
+                int n2=row.at(i).indexOf(",", n1);
+                int n3=(n2<0? row.at(i).size() - n1: n2-n1);
+                build = row[i].mid(n1+QString("д.").size(), n3-QString("д.").size());
+                row[i].remove(n1, n3+1);
+            }
+            if(row.at(i).contains("стр."))
+            {
+                int n1=row.at(i).indexOf("стр.");
+                int n2=row.at(i).indexOf(",", n1);
+                int n3=(n2<0? row.at(i).size() - n1: n2-n1);
+                build = row[i].mid(n1+QString("стр.").size(), n3-QString("д.").size());
+                row[i].remove(n1, n3+1);
+            }
+            if(!isOneColumnAddr && build.isEmpty() && !row.at(i).isEmpty())
+            {
+                int n1=row.at(i).indexOf(QRegExp("\\d"));
+                int n2=row.at(i).indexOf(",", n1);
+                int n3=(n2<0? row.at(i).size() - n1: n2-n1);
+                build = row[i].mid(n1, n3+1);
+                row[i].remove(n1, n3);
+            }
+            //выделение корпуса (литеры) из содержимого ячейки
+            int n1=0;
+            if( (n1 = build.indexOf(QRegExp("\\\\\\s{0,}[\\d\\w]+"))) > 0 )
+            {
+                int n2=build.indexOf(' ', n1+2);
+                int n3=(n2<0? build.size() - n1: n2-n1);
+                korp = build.mid(n1, n3);
+                build.remove(n1, n3+1);
+            }
+            if( (n1 = build.indexOf('/')) > 0 )
+            {
+                int n2=row.at(i).indexOf(' ', n1+1);
+                int n3=(n2<0? build.size() - n1: n2-n1);
+                korp = build.mid(n1, n3);
+                build.remove(n1, n3+1);
+            }
+
+
+//            QRegExp reg("[а-яА-ЯA-za-z]");
+////            QRegExp reg("\\w+");
+//            if (row.at(i).contains(reg))
+//            {
+//                int pos(0);
+//                QString copy1 = row.at(numbKCol);
+////                row[numbKCol].clear();
+//                while ((pos = reg.indexIn(row.at(i), pos)) != -1)
+//                {
+//                    row[numbKCol].append(copy1+ reg.cap());
+//                    pos += reg.matchedLength();
+//                }
+////                qDebug() << pos << row[numbKCol];
+//                QString copy = row.at(i);
+//                row[i].clear();
+//                copy.remove(reg);
+//                row[numbBCol].append(copy);
+//            }
+
+            if(!isOneColumnAddr)
+                row[colB] = build;
+            else
+            {
+                //TODO
+            }
+
+        }//end work with B
+
+//        //работаем с K
+//        if(i==4)
+//        {
+//            //удаление названия элемента ("корп.", "лит." и пр.)
+//            if (row.at(i).contains("ЛИТ."))
+//            {
+//                row[i].remove("ЛИТ.");
+//            }
+//            if (row.at(i).contains("лит"))
+//            {
+//                row[i].remove("лит");
+//            }
+//            if (row.at(i).contains("лит."))
+//            {
+//                row[i].remove("лит.");
+//            }
+//            if (row.at(i).contains("ЛИТЕ"))
+//            {
+//                row[i].remove("ЛИТЕ");
+//            }
+//            if (row.at(i).contains("ЛИТ-"))
+//            {
+//                row[i].remove("ЛИТ-");
+//            }
+//            if (row.at(i).contains(",ПОМ."))
+//            {
+//                row[i].remove(",ПОМ.");
+//            }
+//            if (row.at(i).contains("ЛИТ"))
+//            {
+//                row[i].remove("ЛИТ");
+//            }
+//            if (row.at(i).contains("ер"))
+//            {
+//                row[i].remove("ер");
+//            }
+
+//            //приведение к формату: "%n|%c" - %n - число %a - буква(-ы)
+//            QRegExp reg("[^A-Za-zА-Яа-я0-9]*");
+//            if (row.at(i).contains(reg))
+//            {
+//                row[i].remove(reg);
+//            }
+
+//        }
+
+//        //работаем с ENAME
+//        if(i==5)
+//        {
+//            //присваивание выделеннного названия структурного элемента из столбца STREET
+//            //например, ул., пр-т, ш. и пр.
+//            if(!ename.isEmpty())
+//                row[i] = ename;
+//        }
+
+//        //работаем с ADD
+//        if(i==6)
+//        {
+//            //присваивание выделенной доп.информации из столбца STREET
+//            //например, то что содержится в скобках
+//            if(!additional.isEmpty())
+//                row[i] = additional;
+//        }
+    }
+
+    qDebug() << "b" << build;
+    qDebug() << "korp" << korp;
+    qDebug() << "additional" << additional;
+    qDebug() << "___" << row << colAddr << colB << colK;
+    if(nDebugString>25)
+        assert(0);
+}
 
 void MainWindow::workWitkRow(QStringList &row)
 {
@@ -675,7 +1047,7 @@ void MainWindow::workWitkRow(QStringList &row)
     QString ename;
     QString additional;
     int numbBCol=3; //number of B column
-    int numbKCol=4; //number of B column
+    int numbKCol=4; //number of K column
     for(int i=0; i<row.size(); i++)
     {
         //удаляем боковые символы
@@ -803,18 +1175,14 @@ void MainWindow::workWitkRow(QStringList &row)
             }
 
             //работа со скобками
-           /* if (row.at(i).contains("(") && row.at(i).contains(")"))
+            int n1=row.at(i).indexOf('(');
+            if (n1>0 && (row.at(i).indexOf(')',n1)>0))
             {
-                row[i].remove(QRegExp("( (.+) )"));
-            }*/
-//            QString str = "п. Парголово, Дальневосточная (Михайловка) ул., ";
-//            // QString str1 = "aaa bbb ccc";
-//             if (str.contains("(") && str.contains(")")){
-
-//                 str.remove(QRegExp("\*(.+)"));
-//             }
-
-//            qDebug() << str;
+                int n2=row.at(i).indexOf(')', n1);
+                int n3=n2-n1;
+                additional = row[i].mid(n1+1, n3-1);
+                row[i].remove(n1, n3+1);
+            }
 
         }
 

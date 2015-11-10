@@ -10,9 +10,11 @@
 #include <QMessageBox>
 #include <QTableWidget>
 #include <QTime>
+#include <QDateTime>
 
 #include <QAxBase>
 #include <QAxObject>
+#include <assert.h>
 
 const int CountRow = 1000; //макс. количество строк базы данных которое возможно открыть
 
@@ -45,9 +47,17 @@ private slots:
      */
     void workWitkRow(QStringList &row);
 
+    /**
+     * @brief
+     * Работа со строкой исходных данных
+     * @param row Список записей строки
+     */
+    void workWitkRowIn(QStringList &row, int colAddr, int colB, int colK);
+
 private:
     Ui::MainWindow *ui;
-    QVector<QStringList> _vector;
+    QVector<QStringList> _vectorBase;
+    QVector<QStringList> _vectorIn;
     QList<QVariant> _listData;
     QString _filenameSave;
     QString _stringResultForCsv;

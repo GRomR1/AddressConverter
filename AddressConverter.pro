@@ -6,11 +6,16 @@ TARGET = AddressConverter
 TEMPLATE = app
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        mainwindow.cpp \
+    findbid.cpp \
+    worker.cpp
 
-HEADERS  += mainwindow.h
+HEADERS  += mainwindow.h \
+    findbid.h \
+    worker.h
 
-FORMS    += mainwindow.ui
+FORMS    += mainwindow.ui \
+    findbid.ui
 
 DISTFILES += \
     README.md

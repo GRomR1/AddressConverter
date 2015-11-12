@@ -52,7 +52,9 @@ private slots:
      * Работа со строкой исходных данных
      * @param row Список записей строки
      */
-    void workWitkRowIn(QStringList &row, int colAddr, int colB, int colK);
+    void workWitkRowIn(QStringList &row, bool isOneColumnAddr,
+                       int colStr, int colB, int colK,
+                       int colE, int colAdd);
 
 private:
     Ui::MainWindow *ui;
